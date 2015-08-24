@@ -1,10 +1,7 @@
 ---
 title: 'Practical Machine Learning Prediction Project'
 author: "Balaji"
-output:
-  html_document:
-  keep_md: yes
-toc: yes
+
 ---
 
 
@@ -15,14 +12,14 @@ Load the training data into a data table.
 ```{r}
 library(data.table)
 library(utils)
-url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+url <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
 D <- fread(url)
 ```
 
 Load the testing data into a data table.
 
 ```{r}
-url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+url <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
 TestSet <- fread(url)
 ```
 
@@ -94,35 +91,17 @@ if (any(nzv$nzv)) nzv else message("No variables with near zero variance")
 I chose to use random forests for a prediction model
 The error will be estimated using the 40% probing sample.
 
-Set up the parallel clusters.
-
-```{r}
-library(parallel)
-library(doParallel)
-cl <- makeCluster(detectCores() - 1)
-registerDoParallel(cl)
-```
-
-Set the control parameters.
-
-```{r}
-ctrl <- trainControl(classProbs=TRUE,
-                     savePredictions=TRUE,
-                     allowParallel=TRUE)
-```
 
 Fit model over the tuning parameters.
 
 ```{r}
-method <- "rf"
-system.time(trainingModel <- train(classe ~ ., data=DTrainCS, method=method))
+#system.time(trainingModel <- train(classe ~ ., data=DTrainCS, method="rf"))
+if (file.exists("trainingModel.RData")) {
+  load("trainingModel.RData") 
+  } else 
+    trainingModel <- train(classe ~ ., data=DTrainCS, method="rf")
 ```
 
-Stop the clusters.
-
-```{r}
-stopCluster(cl)
-```
 
 ## Evaluate the model on the training dataset
 
@@ -147,7 +126,7 @@ trainingModel$finalModel
 ```
 
 **The estimated error rate is less than 1%.**
-  
+
 Save training model object for later.
 
 ```{r}
@@ -183,7 +162,7 @@ pml_write_files = function(x){
   for(i in 1:n){
     filename = paste0("problem_id_",i,".txt")
     write.table(x[i],file=file.path(path, filename),quote=FALSE,row.names=FALSE,col.names=FALSE)
+    }
   }
-}
 pml_write_files(hat)
 ```
