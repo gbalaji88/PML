@@ -1,7 +1,7 @@
 ---
-title: 'Practical Machine Learning Prediction Project'
+title: "Practical Machine Learning Prediction Project"
 author: "Balaji"
-
+output: pdf_document
 ---
 
 
