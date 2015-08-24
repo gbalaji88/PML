@@ -10,6 +10,7 @@ author: "Balaji"
 Load the training data into a data table.
 
 ```{r}
+echo = TRUE
 library(data.table)
 library(utils)
 url <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
@@ -58,7 +59,7 @@ seed <- as.numeric(as.Date("2014-10-26"))
 set.seed(seed)
 inTrain <- createDataPartition(D$classe, p=0.6)
 DTrain <- D[inTrain[[1]]]
-DProbe <- D[-inTrain[[1]]]
+DCV <- D[-inTrain[[1]]]
 ```
 
 Preprocess the prediction variables by centering and scaling.
@@ -74,9 +75,9 @@ DTrainCS <- data.table(data.frame(classe = DTrain[, classe], XCS))
 Apply the centering and scaling to the probing dataset.
 
 ```{r}
-X <- DProbe[, predCandidates, with=FALSE]
+X <- DCV[, predCandidates, with=FALSE]
 XCS <- predict(preProc, X)
-DProbeCS <- data.table(data.frame(classe = DProbe[, classe], XCS))
+DCVCS <- data.table(data.frame(classe = DCV[, classe], XCS))
 ```
 
 Check for near zero variance.
@@ -107,16 +108,21 @@ if (file.exists("trainingModel.RData")) {
 
 ```{r}
 trainingModel
-hat <- predict(trainingModel, DTrainCS)
-confusionMatrix(hat, DTrain[, classe])
+phat <- predict(trainingModel, DTrainCS)
+confusionMatrix(phat, DTrain[, classe])
 ```
 
-## Evaluate the model on the probing dataset
+The training model seems to perform with 100% accuracy. This could either be a really good
+model, or we might have over-fit the data. Let us explore using a cross-validation dataset.
+
+## Evaluate the model on the cross-validation dataset
 
 ```{r}
-hat <- predict(trainingModel, DProbeCS)
-confusionMatrix(hat, DProbeCS[, classe])
+phat <- predict(trainingModel, DCVCS)
+confusionMatrix(phat, DCVCS[, classe])
 ```
+
+Good News! The out-of-sample error should hopefully be less than 1%
 
 ## Display the final model
 
@@ -125,7 +131,7 @@ varImp(trainingModel)
 trainingModel$finalModel
 ```
 
-**The estimated error rate is less than 1%.**
+We see that the estimated error rate is less than 1%
 
 Save training model object for later.
 
@@ -156,7 +162,7 @@ subset(TestSet, select=names(TestSet)[grep("belt|[^(fore)]arm|dumbbell|forearm",
 Write submission files to `PMLfiles/`.
 
 ```{r}
-pml_write_files = function(x){
+save_files = function(x){
   n = length(x)
   path <- "PMLfiles/"
   for(i in 1:n){
@@ -164,5 +170,5 @@ pml_write_files = function(x){
     write.table(x[i],file=file.path(path, filename),quote=FALSE,row.names=FALSE,col.names=FALSE)
     }
   }
-pml_write_files(hat)
+save_files(hat)
 ```

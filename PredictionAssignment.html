@@ -69,7 +69,8 @@ img {
 <div id="prepare-the-datasets" class="section level1">
 <h1>Prepare the datasets</h1>
 <p>Load the training data into a data table.</p>
-<pre class="r"><code>library(data.table)
+<pre class="r"><code>echo = TRUE
+library(data.table)
 library(utils)
 url &lt;- &quot;http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv&quot;
 D &lt;- fread(url)</code></pre>
@@ -141,7 +142,7 @@ D[, .N, classe]</code></pre>
 set.seed(seed)
 inTrain &lt;- createDataPartition(D$classe, p=0.6)
 DTrain &lt;- D[inTrain[[1]]]
-DProbe &lt;- D[-inTrain[[1]]]</code></pre>
+DCV &lt;- D[-inTrain[[1]]]</code></pre>
 <p>Preprocess the prediction variables by centering and scaling.</p>
 <pre class="r"><code>X &lt;- DTrain[, predCandidates, with=FALSE]
 preProc &lt;- preProcess(X)
@@ -155,9 +156,9 @@ preProc</code></pre>
 <pre class="r"><code>XCS &lt;- predict(preProc, X)
 DTrainCS &lt;- data.table(data.frame(classe = DTrain[, classe], XCS))</code></pre>
 <p>Apply the centering and scaling to the probing dataset.</p>
-<pre class="r"><code>X &lt;- DProbe[, predCandidates, with=FALSE]
+<pre class="r"><code>X &lt;- DCV[, predCandidates, with=FALSE]
 XCS &lt;- predict(preProc, X)
-DProbeCS &lt;- data.table(data.frame(classe = DProbe[, classe], XCS))</code></pre>
+DCVCS &lt;- data.table(data.frame(classe = DCV[, classe], XCS))</code></pre>
 <p>Check for near zero variance.</p>
 <pre class="r"><code>nzv &lt;- nearZeroVar(DTrainCS, saveMetrics=TRUE)
 if (any(nzv$nzv)) nzv else message(&quot;No variables with near zero variance&quot;)</code></pre>
@@ -193,11 +194,11 @@ if (file.exists(&quot;trainingModel.RData&quot;)) {
 ## 
 ## Accuracy was used to select the optimal model using  the largest value.
 ## The final value used for the model was mtry = 27.</code></pre>
-<pre class="r"><code>hat &lt;- predict(trainingModel, DTrainCS)</code></pre>
+<pre class="r"><code>phat &lt;- predict(trainingModel, DTrainCS)</code></pre>
 <pre><code>## Loading required package: randomForest
 ## randomForest 4.6-10
 ## Type rfNews() to see new features/changes/bug fixes.</code></pre>
-<pre class="r"><code>confusionMatrix(hat, DTrain[, classe])</code></pre>
+<pre class="r"><code>confusionMatrix(phat, DTrain[, classe])</code></pre>
 <pre><code>## Confusion Matrix and Statistics
 ## 
 ##           Reference
@@ -229,11 +230,12 @@ if (file.exists(&quot;trainingModel.RData&quot;)) {
 ## Detection Rate         0.2843   0.1935   0.1744   0.1639   0.1838
 ## Detection Prevalence   0.2843   0.1935   0.1744   0.1639   0.1838
 ## Balanced Accuracy      1.0000   1.0000   1.0000   1.0000   1.0000</code></pre>
+<p>The training model seems to perform with 100% accuracy. This could either be a really good model, or we might have over-fit the data. Let us explore using a cross-validation dataset.</p>
 </div>
-<div id="evaluate-the-model-on-the-probing-dataset" class="section level2">
-<h2>Evaluate the model on the probing dataset</h2>
-<pre class="r"><code>hat &lt;- predict(trainingModel, DProbeCS)
-confusionMatrix(hat, DProbeCS[, classe])</code></pre>
+<div id="evaluate-the-model-on-the-cross-validation-dataset" class="section level2">
+<h2>Evaluate the model on the cross-validation dataset</h2>
+<pre class="r"><code>phat &lt;- predict(trainingModel, DCVCS)
+confusionMatrix(phat, DCVCS[, classe])</code></pre>
 <pre><code>## Confusion Matrix and Statistics
 ## 
 ##           Reference
@@ -265,6 +267,7 @@ confusionMatrix(hat, DProbeCS[, classe])</code></pre>
 ## Detection Rate         0.2842   0.1909   0.1722   0.1614   0.1817
 ## Detection Prevalence   0.2863   0.1925   0.1758   0.1635   0.1820
 ## Balanced Accuracy      0.9981   0.9925   0.9916   0.9909   0.9943</code></pre>
+<p>Good News! The out-of-sample error should hopefully be less than 1%</p>
 </div>
 <div id="display-the-final-model" class="section level2">
 <h2>Display the final model</h2>
@@ -310,7 +313,7 @@ confusionMatrix(hat, DProbeCS[, classe])</code></pre>
 ## C    0   10 2037    7    0 0.008276534
 ## D    1    1   27 1898    3 0.016580311
 ## E    0    2    2    7 2154 0.005080831</code></pre>
-<p><strong>The estimated error rate is less than 1%.</strong></p>
+<p>We see that the estimated error rate is less than 1%</p>
 <p>Save training model object for later.</p>
 <pre class="r"><code>save(trainingModel, file=&quot;trainingModel.RData&quot;)</code></pre>
 </div>
@@ -371,7 +374,7 @@ subset(TestSet, select=names(TestSet)[grep(&quot;belt|[^(fore)]arm|dumbbell|fore
 <div id="submission-to-coursera" class="section level2">
 <h2>Submission to Coursera</h2>
 <p>Write submission files to <code>PMLfiles/</code>.</p>
-<pre class="r"><code>pml_write_files = function(x){
+<pre class="r"><code>save_files = function(x){
   n = length(x)
   path &lt;- &quot;PMLfiles/&quot;
   for(i in 1:n){
@@ -379,7 +382,7 @@ subset(TestSet, select=names(TestSet)[grep(&quot;belt|[^(fore)]arm|dumbbell|fore
     write.table(x[i],file=file.path(path, filename),quote=FALSE,row.names=FALSE,col.names=FALSE)
     }
   }
-pml_write_files(hat)</code></pre>
+save_files(hat)</code></pre>
 </div>
 </div>
 
